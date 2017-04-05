@@ -3,12 +3,37 @@ valuedomain-ddns
 
 An _unofficial_ DDNS (Dynamic DNS) updater for [Value-Domain](https://www.value-domain.com/) written by Golang.
 
+Download
+--------
+
+### Binary distribution
+
+Downalod from [releases page](https://github.com/mikan/valuedomain-ddns/releases). Windows and Linux (amd64) are available.
+
+### go get
+
+```bash
+go get github.com/mikan/valuedomain
+```
+
 Usage
 -----
+
+### One-shot
 
 ```bash
 ./valuedomain-ddns -c ddns.json
 ```
+
+### cron
+
+Sample `/etc/cron.d/valuedomain-ddns`:
+
+```cron
+*/15 * * * * USER /opt/mikan/valuedomain-ddns -c /etc/ddns.json > /dev/null
+```
+
+We do not recommend specifying root for _USER_, but you need to specify a user who has write access to log / last IP file.
 
 Configuration
 -------------
@@ -39,18 +64,6 @@ Sample `/etc/ddns.json`:
 ```
 
 Two output files (`checker.last` and `log.file`) are created automatically.
-
-
-### cron
-
-Sample `/etc/cron.d/valuedomain-ddns`:
-
-```cron
-*/15 * * * * USER /opt/mikan/valuedomain-ddns -c /etc/ddns.json > /dev/null
-```
-
-We do not recommend specifying root for _USER_, but you need to specify a user who has write access to log / last IP file.
-
 
 Parameters
 ----------
