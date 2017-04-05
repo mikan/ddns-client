@@ -46,7 +46,7 @@ Two output files (`checker.last` and `log.file`) are created automatically.
 Sample `/etc/cron.d/valuedomain-ddns`:
 
 ```cron
-*/15 * * * * USER /opt/mikan/valuedomain-ddns -c /etc/ddns.yml > /dev/null
+*/15 * * * * USER /opt/mikan/valuedomain-ddns -c /etc/ddns.json > /dev/null
 ```
 
 We do not recommend specifying root for _USER_, but you need to specify a user who has write access to log / last IP file.
