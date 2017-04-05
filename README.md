@@ -13,9 +13,9 @@ Usage
 Configuration
 -------------
 
-### ddns.yml
+### ddns.json
 
-Sample `/etc/ddns.yml`:
+Sample `/etc/ddns.json`:
 
 ```json
 {
