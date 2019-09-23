@@ -41,6 +41,7 @@ type cfRecordUpdateRequest struct {
 	Type    string `json:"type"`
 	Name    string `json:"name"`
 	Content string `json:"content"`
+	Proxied bool   `json:"proxied"`
 }
 
 func handleCloudflare(target Target, ip string) bool {
@@ -104,6 +105,7 @@ func submitCloudflare(target Target, recordID, ip string) error {
 		Type:    "A",
 		Name:    target.Host,
 		Content: ip,
+		Proxied: target.Proxied,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to marshal update request: %v", err)

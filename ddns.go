@@ -26,9 +26,10 @@ const (
 // JSON "target" element
 type Target struct {
 	Class    ClassName `json:"class"`
-	Domain   string    `json:"domain"`
-	Password string    `json:"password"`
-	Host     string    `json:"host"`
+	Domain   string    `json:"domain"`   // vd: domain name, cf: zone id
+	Password string    `json:"password"` // vd: password, cf: api token
+	Host     string    `json:"host"`     // vd: host name, cf: record name
+	Proxied  bool      `json:"proxied"`  // vd: unused, cf: proxy enabled
 }
 
 // JSON "checker" element
@@ -49,20 +50,6 @@ type Config struct {
 	Checker Checker  `json:"checker"`
 	Log     Log      `json:"log"`
 }
-
-// Specification: https://www.value-domain.com/ddns.php?action=howto
-type ValueDomainStatus int
-
-const (
-	Success                 ValueDomainStatus = 0
-	InvalidRequest          ValueDomainStatus = 1
-	InvalidDomainOrPassword ValueDomainStatus = 2
-	InvalidIP               ValueDomainStatus = 3
-	AuthenticationFailed    ValueDomainStatus = 4
-	DatabaseBusy            ValueDomainStatus = 5
-	Unknown                 ValueDomainStatus = 9
-	ClientError             ValueDomainStatus = -1
-)
 
 func main() {
 	configFile := flag.String("c", "ddns.json", "path to configuration file")

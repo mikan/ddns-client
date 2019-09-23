@@ -79,7 +79,8 @@ Sample `/etc/ddns.json` for Cloudflare:
       "class": "cloudflare",
       "domain": "ZONE-ID",
       "password": "API-KEY",
-      "host": "host.foo.com"
+      "host": "host.foo.com",
+      "proxied": true
     }
   ],
   "checker": {

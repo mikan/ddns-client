@@ -12,6 +12,20 @@ import (
 
 const vdLogPrefix = "[Submitter/ValueDomain] "
 
+// Specification: https://www.value-domain.com/ddns.php?action=howto
+type ValueDomainStatus int
+
+const (
+	Success                 ValueDomainStatus = 0
+	InvalidRequest          ValueDomainStatus = 1
+	InvalidDomainOrPassword ValueDomainStatus = 2
+	InvalidIP               ValueDomainStatus = 3
+	AuthenticationFailed    ValueDomainStatus = 4
+	DatabaseBusy            ValueDomainStatus = 5
+	Unknown                 ValueDomainStatus = 9
+	ClientError             ValueDomainStatus = -1
+)
+
 func handleValueDomain(target Target, ip string) bool {
 	status, err := submitValueDomain(target, ip)
 	if err != nil {
