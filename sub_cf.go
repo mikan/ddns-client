@@ -54,7 +54,7 @@ func handleCloudflare(target Target, ip string) bool {
 		log.Printf(cfLogPrefix+"Failed to submit %s: %v\n", target.Class, err)
 		return false
 	}
-	log.Printf(cfLogPrefix+"Success %s.%s=%s\n", target.Host, target.Domain, ip)
+	log.Printf(cfLogPrefix+"Success %s=%s\n", target.Host, ip)
 	return true
 }
 
