@@ -1,5 +1,5 @@
-valuedomain-ddns
-================
+ddns-client
+===========
 
 An _unofficial_ DDNS (Dynamic DNS) updater for [Value-Domain](https://www.value-domain.com/) and [Cloudflare](https://www.cloudflare.com/) written by Golang.
 
