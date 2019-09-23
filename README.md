@@ -16,13 +16,20 @@ Download from [releases page](https://github.com/mikan/valuedomain-ddns/releases
 go get github.com/mikan/ddns-client
 ```
 
+Build
+-----
+
+```bash
+go build .
+```
+
 Usage
 -----
 
 ### One-shot
 
 ```bash
-./valuedomain-ddns -c ddns.json
+./ddns-client -c ddns.json
 ```
 
 ### cron
@@ -30,7 +37,7 @@ Usage
 Sample `/etc/cron.d/ddns`:
 
 ```cron
-*/15 * * * * USER /opt/mikan/ddns -c /etc/ddns.json > /dev/null
+*/15 * * * * USER /opt/mikan/ddns-client -c /etc/ddns.json > /dev/null
 ```
 
 We do not recommend specifying root for _USER_, but you need to specify a user who has write access to log / last IP file.
