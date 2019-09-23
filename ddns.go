@@ -1,8 +1,7 @@
-// Copyright 2017 mikan.
+// Copyright 2017-2019 mikan.
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -13,16 +12,23 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
+)
+
+// ClassName defines supported class names.
+type ClassName string
+
+const (
+	ValueDomain = ClassName("valuedomain")
+	Cloudflare  = ClassName("cloudflare")
 )
 
 // JSON "target" element
 type Target struct {
-	Class    string `json:"class"`
-	Domain   string `json:"domain"`
-	Password string `json:"password"`
-	Host     string `json:"host"`
+	Class    ClassName `json:"class"`
+	Domain   string    `json:"domain"`
+	Password string    `json:"password"`
+	Host     string    `json:"host"`
 }
 
 // JSON "checker" element
@@ -48,14 +54,14 @@ type Config struct {
 type ValueDomainStatus int
 
 const (
-	SUCCESS                    ValueDomainStatus = 0
-	INVALID_REQUEST            ValueDomainStatus = 1
-	INVALID_DOMAIN_OR_PASSWORD ValueDomainStatus = 2
-	INVALID_IP                 ValueDomainStatus = 3
-	AUTHENTICATION_FAILED      ValueDomainStatus = 4
-	DATABASE_BUSY              ValueDomainStatus = 5
-	UNKNOWN                    ValueDomainStatus = 9
-	CLIENT_ERROR               ValueDomainStatus = -1
+	Success                 ValueDomainStatus = 0
+	InvalidRequest          ValueDomainStatus = 1
+	InvalidDomainOrPassword ValueDomainStatus = 2
+	InvalidIP               ValueDomainStatus = 3
+	AuthenticationFailed    ValueDomainStatus = 4
+	DatabaseBusy            ValueDomainStatus = 5
+	Unknown                 ValueDomainStatus = 9
+	ClientError             ValueDomainStatus = -1
 )
 
 func main() {
@@ -82,46 +88,31 @@ func main() {
 	}
 
 	// Detect change
-	if *last == *ip {
-		fmt.Printf("[Checker] IP not changed: %s\n", *ip) // console write only
+	if last == ip {
+		fmt.Printf("[Checker] IP not changed: %s\n", ip) // console write only
 		return
 	}
 
 	// Submit IP for each targets
-	success := false
-	for _, target := range config.Targets {
-		status, err := submit(target, *ip)
-		if err != nil {
-			log.Printf("[Submitter] Failed to submit %s: %v\n", target.Class, err)
-			continue
+	success := make([]bool, len(config.Targets))
+	for i, target := range config.Targets {
+		switch target.Class {
+		case ValueDomain:
+			success[i] = handleValueDomain(target, ip)
+		case Cloudflare:
+			success[i] = handleCloudflare(target, ip)
 		}
-		switch status {
-		case SUCCESS:
-			log.Printf("[Submitter] SUCCESS %s.%s=%s\n", target.Host, target.Domain, *ip)
-			success = true
-		case INVALID_REQUEST:
-			log.Printf("[Submitter] INVALID REQUEST %s.%s=%s\n", target.Host, target.Domain, *ip)
-		case INVALID_DOMAIN_OR_PASSWORD:
-			log.Printf("[Submitter] INVALID DOMAIN OR PASSWORD %s.%s=%s\n", target.Host, target.Domain, *ip)
-		case INVALID_IP:
-			log.Printf("[Submitter] INVALID IP %s.%s=%s\n", target.Host, target.Domain, *ip)
-		case AUTHENTICATION_FAILED:
-			log.Printf("[Submitter] AUTHENTICATION FAILED %s.%s=%s\n", target.Host, target.Domain, *ip)
-		case DATABASE_BUSY:
-			log.Printf("[Submitter] DATABASE BUSY %s.%s=%s\n", target.Host, target.Domain, *ip)
-		case UNKNOWN:
-			fallthrough
-		default:
-			log.Printf("[Submitter] UNKNOWN %s.%s=%s\n", target.Host, target.Domain, *ip)
+	}
+
+	// Don't save if failed result included
+	for _, entry := range success {
+		if !entry {
+			os.Exit(1)
 		}
 	}
 
 	// Save last successful IP
-	if !success {
-		os.Exit(1)
-	}
-	err = writeLastIP(config.Checker.Last, *ip)
-	if err != nil {
+	if err := writeLastIP(config.Checker.Last, ip); err != nil {
 		log.Fatalf("[Last] Failed to write %s: %v\n", config.Checker.Last, err)
 	}
 }
@@ -147,74 +138,52 @@ func setupLogFile(logConfig Log) {
 	log.SetOutput(io.MultiWriter(os.Stdout, f))
 }
 
-func checkIP(checker Checker) (*string, error) {
+func checkIP(checker Checker) (string, error) {
 	res, err := http.Get(checker.URL)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if res.StatusCode != 200 {
-		return nil, errors.New(fmt.Sprintf("[Checker] HTTP %d: %s", res.StatusCode, res.Status))
+		return "", errors.New(fmt.Sprintf("[Checker] HTTP %d: %s", res.StatusCode, res.Status))
 	}
 	rawBody, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	body := string(rawBody)
-	ip := net.ParseIP(body)
-	if ip == nil {
-		return nil, errors.New("[Checker] Illegal response: " + body)
+	ipStr := strings.TrimSuffix(string(rawBody), "\n")
+	if ip := net.ParseIP(ipStr); ip == nil {
+		return "", errors.New("[Checker] Illegal response: " + ipStr)
 	}
-	return &body, nil
+	return ipStr, nil
 }
 
-func loadLastIP(lastFilePath string) (*string, error) {
+func loadLastIP(lastFilePath string) (string, error) {
 	_, err := os.Stat(lastFilePath)
 	if err != nil {
-		empty := ""
-		return &empty, nil // empty string if file isn't exists
+		return "", nil // empty string if file isn't exists
 	}
 	file, err := os.Open(lastFilePath)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil {
+			log.Printf("[Last] Failed to close %s: %v", lastFilePath, err)
+		}
+	}()
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	last := string(data)
-	return &last, nil
+	return string(data), nil
 }
 
 func writeLastIP(lastFilePath string, ip string) error {
 	_, err := os.Stat(lastFilePath)
 	if err == nil {
-		os.Remove(lastFilePath)
-	}
-	return ioutil.WriteFile(lastFilePath, []byte(ip), 0644)
-}
-
-func submit(target Target, ip string) (ValueDomainStatus, error) {
-	url := fmt.Sprintf("https://dyn.value-domain.com/cgi-bin/dyn.fcg?d=%s&p=%s&h=%s&i=%s",
-		target.Domain, target.Password, target.Host, ip)
-	res, err := http.Get(url)
-	if err != nil {
-		return CLIENT_ERROR, err
-	}
-	if res.StatusCode != 200 {
-		return UNKNOWN, errors.New("HTTP " + strconv.Itoa(res.StatusCode) + " " + res.Status)
-	}
-	scanner := bufio.NewScanner(res.Body)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "status=") {
-			status, err := strconv.Atoi(strings.Replace(strings.TrimSpace(line), "status=", "", 1))
-			if err != nil {
-				return CLIENT_ERROR, errors.New("Failed to detect status: " + line)
-			}
-			fmt.Println("[Submitter] " + line) // console write only
-			return ValueDomainStatus(status), nil
+		if err := os.Remove(lastFilePath); err != nil {
+			log.Printf("[Last] Failed to remove %s: %v", lastFilePath, err)
 		}
 	}
-	return CLIENT_ERROR, errors.New("HTTP 200 received but status not detected.")
+	return ioutil.WriteFile(lastFilePath, []byte(ip), 0644)
 }
